@@ -5,12 +5,34 @@ Fetches real-time data from public APIs for conflict analysis
 
 import requests
 import json
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def _fetch_with_retry(url: str, params: dict = None, max_retries: int = 3, timeout: int = 30) -> Optional[Dict]:
+    """Fetch URL with automatic retry on timeout"""
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
+                logger.warning(f"Timeout on {url} (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Failed to fetch {url} after {max_retries} attempts")
+                return None
+        except Exception as e:
+            logger.error(f"Error fetching {url}: {e}")
+            return None
+    return None
 
 
 class GDELTFetcher:
@@ -21,7 +43,7 @@ class GDELTFetcher:
     @staticmethod
     def fetch(keyword: str, days_back: int = 7, max_records: int = 250) -> Dict:
         """
-        Fetch GDELT articles on a keyword
+        Fetch GDELT articles on a keyword with retry logic
         
         Args:
             keyword: Topic to search (e.g., "Ukraine conflict")
@@ -41,10 +63,11 @@ class GDELTFetcher:
                 "timespan": f"{days_back}d"
             }
             
-            response = requests.get(GDELTFetcher.BASE_URL, params=params, timeout=10)
-            response.raise_for_status()
+            data = _fetch_with_retry(GDELTFetcher.BASE_URL, params=params, max_retries=3, timeout=30)
             
-            data = response.json()
+            if not data:
+                return {"source": "GDELT", "error": "Failed to fetch after retries", "articles": []}
+            
             articles = data.get("articles", [])
             
             return {
@@ -104,7 +127,10 @@ class ACLEDFetcher:
                 "date_filter": date_from
             }
             
-            response = requests.get(ACLEDFetcher.BASE_URL, params=params, timeout=10)
+            data = _fetch_with_retry(ACLEDFetcher.BASE_URL, params=params, max_retries=3, timeout=30)
+            if not data:
+                return {"source": "ACLED", "error": "Failed to fetch after retries", "events": []}
+            events = data.get("data", [])
             response.raise_for_status()
             
             data = response.json()
@@ -175,7 +201,7 @@ class ReliefWebFetcher:
                 "sort": ["date:desc"]
             }
             
-            response = requests.get(ReliefWebFetcher.BASE_URL, params=params, timeout=10)
+            response = requests.get(ReliefWebFetcher.BASE_URL, params=params, timeout=30)
             response.raise_for_status()
             
             data = response.json()
@@ -223,7 +249,7 @@ class EconomicDataFetcher:
         """
         try:
             url = f"https://api.frankfurter.app/latest?from={country_code}"
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=30)
             response.raise_for_status()
             
             data = response.json()
