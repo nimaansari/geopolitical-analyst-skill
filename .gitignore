@@ -38,3 +38,4 @@ Thumbs.db
 *.log
 cache/
 *.json.bak
+test_solutions.py
