@@ -25,33 +25,57 @@ class RateLimitCache:
         self.ttl_seconds = 3600  # 1 hour default
     
     def _cache_key(self, url: str, params: dict) -> str:
-        """Generate cache key from URL + params"""
-        key_str = f"{url}_{json.dumps(params, sort_keys=True)}"
-        return hashlib.md5(key_str.encode()).hexdigest()
+        """
+        Generate consistent cache key from URL + params
+        Handles None params and ensures consistent ordering
+        """
+        if params is None:
+            params = {}
+        
+        # Sort params to ensure consistent key regardless of dict ordering
+        sorted_params = json.dumps(params, sort_keys=True, default=str)
+        key_str = f"{url}|{sorted_params}"
+        
+        # Use SHA256 for better collision resistance (was MD5)
+        cache_key = hashlib.sha256(key_str.encode()).hexdigest()
+        logger.debug(f"Cache key: {cache_key[:16]}... for {url[:40]}...")
+        return cache_key
     
-    def get(self, url: str, params: dict) -> Optional[Dict]:
+    def get(self, url: str, params: dict = None) -> Optional[Dict]:
         """Get cached result if not expired"""
+        if params is None:
+            params = {}
+        
         key = self._cache_key(url, params)
+        
         if key in self.cache:
             data, timestamp = self.cache[key]
-            if time.time() - timestamp < self.ttl_seconds:
-                logger.info(f"Cache HIT for {url[:50]}...")
+            age_seconds = time.time() - timestamp
+            
+            if age_seconds < self.ttl_seconds:
+                logger.info(f"✓ Cache HIT for {url[:50]}... (age: {age_seconds:.1f}s)")
                 return data
             else:
-                logger.info(f"Cache EXPIRED for {url[:50]}...")
+                logger.info(f"✗ Cache EXPIRED for {url[:50]}... (age: {age_seconds:.1f}s > {self.ttl_seconds}s)")
                 del self.cache[key]
+        else:
+            logger.debug(f"✗ Cache MISS for {url[:50]}... (key: {key[:16]}...)")
+        
         return None
     
-    def set(self, url: str, params: dict, data: Dict):
+    def set(self, url: str, params: dict = None, data: Dict = None):
         """Cache result with timestamp (skip empty/failed responses)"""
+        if params is None:
+            params = {}
+        
         # Don't cache empty or failed responses
         if not data or not data.get("data") and not data.get("articles") and not data.get("events"):
-            logger.info(f"Skipped caching empty/failed response for {url[:50]}...")
+            logger.info(f"⊘ Skipped caching empty/failed response for {url[:50]}...")
             return
         
         key = self._cache_key(url, params)
         self.cache[key] = (data, time.time())
-        logger.info(f"Cached result for {url[:50]}...")
+        logger.info(f"✓ Cached result for {url[:50]}... (key: {key[:16]}...)")
     
     def clear(self):
         """Clear all cache"""

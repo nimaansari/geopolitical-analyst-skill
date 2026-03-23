@@ -235,6 +235,9 @@ class ConflictDataFallbackChain:
             "ucdp_events": len(ucdp_data.get('results', [])) if ucdp_data else 0,
             "status": "success" if combined_events else "degraded"
         }
+    
+    # Alias for shorter method name
+    get_data = fetch_conflict_data
 
 
 # Convenience functions
