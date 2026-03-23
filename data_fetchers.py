@@ -9,30 +9,112 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import logging
+import hashlib
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# SOLUTION 1: EXPONENTIAL BACKOFF FOR RATE LIMITING (429 ERRORS)
+# ============================================================================
 
-def _fetch_with_retry(url: str, params: dict = None, max_retries: int = 3, timeout: int = 30) -> Optional[Dict]:
-    """Fetch URL with automatic retry on timeout"""
+class RateLimitCache:
+    """Local cache for API results (1-4 hour TTL)"""
+    def __init__(self):
+        self.cache = {}
+        self.ttl_seconds = 3600  # 1 hour default
+    
+    def _cache_key(self, url: str, params: dict) -> str:
+        """Generate cache key from URL + params"""
+        key_str = f"{url}_{json.dumps(params, sort_keys=True)}"
+        return hashlib.md5(key_str.encode()).hexdigest()
+    
+    def get(self, url: str, params: dict) -> Optional[Dict]:
+        """Get cached result if not expired"""
+        key = self._cache_key(url, params)
+        if key in self.cache:
+            data, timestamp = self.cache[key]
+            if time.time() - timestamp < self.ttl_seconds:
+                logger.info(f"Cache HIT for {url[:50]}...")
+                return data
+            else:
+                logger.info(f"Cache EXPIRED for {url[:50]}...")
+                del self.cache[key]
+        return None
+    
+    def set(self, url: str, params: dict, data: Dict):
+        """Cache result with timestamp"""
+        key = self._cache_key(url, params)
+        self.cache[key] = (data, time.time())
+        logger.info(f"Cached result for {url[:50]}...")
+    
+    def clear(self):
+        """Clear all cache"""
+        self.cache.clear()
+
+
+# Global cache instance
+_api_cache = RateLimitCache()
+
+
+def _fetch_with_exponential_backoff(url: str, params: dict = None, max_retries: int = 4, timeout: int = 30) -> Optional[Dict]:
+    """
+    Fetch URL with exponential backoff on rate limit (429) or timeout errors
+    
+    Backoff strategy:
+    - 2 seconds on first retry
+    - 5 seconds on second retry
+    - 10 seconds on third retry
+    - 30 seconds on fourth retry
+    
+    Caching: Results cached for 1 hour to reduce repeated requests
+    """
+    # SOLUTION 1: Check cache first
+    cached = _api_cache.get(url, params)
+    if cached:
+        return cached
+    
+    backoff_times = [2, 5, 10, 30]  # Exponential backoff: 2s → 5s → 10s → 30s
+    
     for attempt in range(max_retries):
         try:
             response = requests.get(url, params=params, timeout=timeout)
+            
+            # Handle rate limiting (429)
+            if response.status_code == 429:
+                if attempt < max_retries - 1:
+                    wait_time = backoff_times[attempt]
+                    logger.warning(f"Rate limited (429) on {url[:50]}... (attempt {attempt+1}/{max_retries}), waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"Rate limited after {max_retries} retries. API is heavily congested.")
+                    return None
+            
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            
+            # SOLUTION 1: Cache successful result
+            _api_cache.set(url, params, data)
+            return data
+            
         except requests.exceptions.Timeout:
             if attempt < max_retries - 1:
-                wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
-                logger.warning(f"Timeout on {url} (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s...")
+                wait_time = backoff_times[attempt]
+                logger.warning(f"Timeout on {url[:50]}... (attempt {attempt+1}/{max_retries}), waiting {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                logger.error(f"Failed to fetch {url} after {max_retries} attempts")
+                logger.error(f"Failed to fetch {url} after {max_retries} attempts (timeout)")
                 return None
         except Exception as e:
             logger.error(f"Error fetching {url}: {e}")
             return None
+    
     return None
+
+
+# Backward compatibility
+_fetch_with_retry = _fetch_with_exponential_backoff
 
 
 class GDELTFetcher:
