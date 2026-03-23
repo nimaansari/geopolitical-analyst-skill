@@ -52,41 +52,56 @@ class UCDPFetcher:
     SOLUTION 3: Uppsala Conflict Data Program (UCDP)
     Completely open access, no registration required
     Alternative to ACLED when public endpoints fail
+    
+    Uses v3 API format with proper endpoint structure
     """
     
-    # UCDP has two main endpoints
-    BASE_URL_V1 = "https://ucdpapi.pcr.uu.se/api/geoevent"  # GeoEvent (locations)
-    BASE_URL_V2 = "https://www.andybeger.com/contagion/data"  # Alternative mirror
+    # UCDP v3 API endpoint (current version)
+    BASE_URL = "https://ucdpapi.pcr.uu.se/api/gedevents/23.1"
     
     @staticmethod
     def fetch_conflicts(country: str = None) -> Optional[Dict]:
         """
-        Fetch conflict events from UCDP
+        Fetch conflict events from UCDP v3 API
         Open API, no authentication needed
-        Tries primary endpoint first, then fallback
+        
+        Args:
+            country: Country name or ISO code (e.g., "Iran", "Syria")
+            
+        Returns:
+            Dict with conflict events or None on failure
         """
         try:
-            # Try primary UCDP endpoint (GeoEvent)
-            url = UCDPFetcher.BASE_URL_V1
+            # Use UCDP v3 API endpoint format
+            url = UCDPFetcher.BASE_URL
             
+            # UCDP v3 expects different params
             params = {
-                "limit": 100
+                "pagesize": 100  # Results per page
             }
             
             if country:
                 params["country"] = country
             
-            logger.info(f"Trying UCDP endpoint for {country or 'global'}...")
+            logger.info(f"Trying UCDP v3 API for {country or 'global'}...")
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
-                event_count = len(data) if isinstance(data, list) else len(data.get('results', []))
+                
+                # Handle UCDP v3 response format
+                events = data.get("events", []) or data.get("results", []) or []
+                event_count = len(events) if isinstance(events, list) else len(data)
+                
                 logger.info(f"✓ UCDP SUCCESS: {event_count} events")
-                return {"data": data} if isinstance(data, list) else data
+                
+                # Normalize response format
+                return {"data": events} if events else {"data": []}
+            elif response.status_code == 404:
+                logger.warning(f"UCDP endpoint 404 for {country} - country may not exist or API changed")
+                return None
             else:
-                logger.warning(f"UCDP primary endpoint failed (status {response.status_code})")
-                # Try fallback if available
+                logger.warning(f"UCDP failed (status {response.status_code})")
                 return None
                 
         except Exception as e:

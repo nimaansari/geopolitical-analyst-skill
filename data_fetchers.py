@@ -73,10 +73,12 @@ def _fetch_with_exponential_backoff(url: str, params: dict = None, max_retries: 
     - 30 seconds on fourth retry
     
     Caching: Results cached for 1 hour to reduce repeated requests
+    Cache skips: Empty responses, rate-limit errors, timeouts
     """
-    # SOLUTION 1: Check cache first
+    # SOLUTION 1: Check cache first (but skip rate-limit/timeout failures)
     cached = _api_cache.get(url, params)
-    if cached:
+    if cached and cached.get("data"):  # Only use cache if has actual data
+        logger.info(f"Cache HIT (with data) for {url[:50]}...")
         return cached
     
     backoff_times = [2, 5, 10, 30]  # Exponential backoff: 2s → 5s → 10s → 30s
@@ -85,7 +87,7 @@ def _fetch_with_exponential_backoff(url: str, params: dict = None, max_retries: 
         try:
             response = requests.get(url, params=params, timeout=timeout)
             
-            # Handle rate limiting (429)
+            # Handle rate limiting (429) - DON'T CACHE THIS
             if response.status_code == 429:
                 if attempt < max_retries - 1:
                     wait_time = backoff_times[attempt]
@@ -99,8 +101,22 @@ def _fetch_with_exponential_backoff(url: str, params: dict = None, max_retries: 
             response.raise_for_status()
             data = response.json()
             
-            # SOLUTION 1: Cache successful result
-            _api_cache.set(url, params, data)
+            # SOLUTION 1: Only cache if response has actual data (not empty)
+            # Check for data fields across different API response formats
+            has_data = (
+                data.get("data") or 
+                data.get("articles") or 
+                data.get("events") or 
+                data.get("results")
+            )
+            
+            if has_data:
+                logger.info(f"Caching successful result (has data)")
+                _api_cache.set(url, params, data)
+            else:
+                logger.warning(f"Response is empty, NOT caching: {url[:50]}...")
+                return data  # Return empty but don't cache it
+            
             return data
             
         except requests.exceptions.Timeout:
