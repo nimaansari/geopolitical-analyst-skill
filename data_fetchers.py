@@ -43,7 +43,12 @@ class RateLimitCache:
         return None
     
     def set(self, url: str, params: dict, data: Dict):
-        """Cache result with timestamp"""
+        """Cache result with timestamp (skip empty/failed responses)"""
+        # Don't cache empty or failed responses
+        if not data or not data.get("data") and not data.get("articles") and not data.get("events"):
+            logger.info(f"Skipped caching empty/failed response for {url[:50]}...")
+            return
+        
         key = self._cache_key(url, params)
         self.cache[key] = (data, time.time())
         logger.info(f"Cached result for {url[:50]}...")

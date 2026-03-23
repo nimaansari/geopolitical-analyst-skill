@@ -15,51 +15,61 @@ logger = logging.getLogger(__name__)
 class ModuleLoader:
     """Lazy-loads analytical modules on demand"""
     
-    # SOLUTION 2: Core modules (8-10) for quick analysis
+    # SOLUTION 2: Core modules (9) for quick analysis
+    # Uses actual reference file names (with hyphens)
     CORE_MODULES = [
-        "actor_identification",
-        "conflict_escalation_ladder",
-        "sanctions_analysis",
-        "economic_impact",
-        "information_warfare",
-        "geopolitical_context",
-        "risk_assessment",
-        "scenario_generation",
-        "network_analysis"
+        "actors",
+        "escalation-ladder",
+        "sanctions-design",
+        "economic-indicators",
+        "information-asymmetry",
+        "historical-analogs",
+        "intelligence-gaps",
+        "scenario-modeling",
+        "networks"
     ]
     
-    # SOLUTION 2: Extended modules (30+) for full analysis
+    # SOLUTION 2: Extended modules (38) for full analysis
+    # Complete list of all reference modules (with hyphens)
     EXTENDED_MODULES = [
-        "civil_military_dynamics",
-        "ethnic_tensions_and_fragmentation",
-        "resource_competition",
-        "supply_chain_vulnerabilities",
-        "trade_relationships",
-        "diplomatic_history",
-        "coup_risk_assessment",
-        "refugee_migration_patterns",
-        "arms_trafficking_routes",
-        "cyber_attack_surface",
-        "water_scarcity_conflicts",
-        "regional_power_balances",
-        "historical_grievances",
-        "sectarian_divisions",
-        "illicit_financial_flows",
-        "media_landscape_analysis",
-        "leadership_stability",
-        "military_capabilities",
-        "nuclear_dimension",
-        "territorial_disputes",
-        "maritime_claims",
-        "energy_dependencies",
-        "agricultural_vulnerability",
-        "pandemic_response_capacity",
-        "corruption_indices",
-        "institutional_weakness",
-        "gender_and_conflict",
-        "child_soldier_recruitment",
-        "trafficking_networks",
-        "counterinsurgency_effectiveness"
+        "ach",
+        "actor-behavior-history",
+        "ai-geopolitics",
+        "alliance-stability",
+        "art-of-war",
+        "atrocity-risk",
+        "calibration",
+        "causal-chains",
+        "civilian-impact",
+        "civil-military-dynamics",
+        "climate-resources",
+        "counter-sanctions",
+        "coup-risk",
+        "credible-commitment",
+        "cyber-operations",
+        "dead-reckoning",
+        "diaspora",
+        "early-warning",
+        "economic-coercion",
+        "elections",
+        "elite-analysis",
+        "game-theory",
+        "geospatial-analysis",
+        "historical-patterns",
+        "hybrid-warfare",
+        "international-law",
+        "perspectives",
+        "plausible-deniability",
+        "sanctions-evasion",
+        "scenarios",
+        "sources",
+        "spiral-dynamics",
+        "tech-dependencies",
+        "threshold-analysis",
+        "tracking",
+        "treaties-deadlines",
+        "trend-detection",
+        "verification-challenge"
     ]
     
     def __init__(self, modules_dir: str = "./references"):

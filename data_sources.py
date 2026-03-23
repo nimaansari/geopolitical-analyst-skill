@@ -54,35 +54,39 @@ class UCDPFetcher:
     Alternative to ACLED when public endpoints fail
     """
     
-    BASE_URL = "https://ucdpapi.pcr.uu.se/api"
+    # UCDP has two main endpoints
+    BASE_URL_V1 = "https://ucdpapi.pcr.uu.se/api/geoevent"  # GeoEvent (locations)
+    BASE_URL_V2 = "https://www.andybeger.com/contagion/data"  # Alternative mirror
     
     @staticmethod
-    def fetch_conflicts(region: str = None) -> Optional[Dict]:
+    def fetch_conflicts(country: str = None) -> Optional[Dict]:
         """
         Fetch conflict events from UCDP
         Open API, no authentication needed
+        Tries primary endpoint first, then fallback
         """
         try:
-            # UCDP endpoint for conflicts
-            url = f"{UCDPFetcher.BASE_URL}/geoevent/search"
+            # Try primary UCDP endpoint (GeoEvent)
+            url = UCDPFetcher.BASE_URL_V1
             
             params = {
-                "limit": 100,
-                "ordering": "-event_date"
+                "limit": 100
             }
             
-            if region:
-                params["region"] = region
+            if country:
+                params["country"] = country
             
-            logger.info(f"Trying UCDP endpoint for {region or 'global'}...")
+            logger.info(f"Trying UCDP endpoint for {country or 'global'}...")
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"✓ UCDP SUCCESS: {len(data.get('results', []))} events")
-                return data
+                event_count = len(data) if isinstance(data, list) else len(data.get('results', []))
+                logger.info(f"✓ UCDP SUCCESS: {event_count} events")
+                return {"data": data} if isinstance(data, list) else data
             else:
-                logger.warning(f"UCDP failed (status {response.status_code})")
+                logger.warning(f"UCDP primary endpoint failed (status {response.status_code})")
+                # Try fallback if available
                 return None
                 
         except Exception as e:
@@ -234,3 +238,29 @@ def get_conflict_data(country: str, use_combined: bool = False) -> Dict:
         return ConflictDataFallbackChain.fetch_with_combined_sources(country)
     else:
         return ConflictDataFallbackChain.fetch_conflict_data(country)
+
+
+def fetch_conflict_data(country: str) -> Dict:
+    """
+    Alias for get_conflict_data() for backward compatibility
+    
+    Args:
+        country: Country name or ISO code
+    
+    Returns:
+        Conflict data from best available source
+    """
+    return get_conflict_data(country)
+
+
+def get_data(country: str) -> Dict:
+    """
+    Alias for get_conflict_data() - shorter method name
+    
+    Usage:
+        data = get_data("Syria")
+        
+    Returns:
+        Conflict data with auto-fallback
+    """
+    return get_conflict_data(country)
