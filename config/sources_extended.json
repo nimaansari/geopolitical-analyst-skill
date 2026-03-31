@@ -1,0 +1,220 @@
+{
+  "metadata": {
+    "version": "2.0",
+    "description": "Extended data sources configuration including real-time events",
+    "last_updated": "2026-03-31",
+    "all_sources_free": true
+  },
+  "structural_sources": {
+    "military": {
+      "name": "SIPRI",
+      "type": "api",
+      "endpoint": "https://sipri.org/databases/milex",
+      "data": ["military_spending", "armed_forces", "weapons_systems"],
+      "update_frequency": "annual",
+      "cost": "free"
+    },
+    "economic": {
+      "name": "World Bank",
+      "type": "api",
+      "endpoint": "https://api.worldbank.org/v2",
+      "data": ["gdp", "gdp_per_capita", "trade", "inflation"],
+      "update_frequency": "annual",
+      "cost": "free"
+    },
+    "diplomatic": {
+      "name": "Correlates of War",
+      "type": "database",
+      "endpoint": "http://www.correlatesofwar.org",
+      "data": ["alliances", "diplomatic_relations", "treaties"],
+      "update_frequency": "irregular",
+      "cost": "free"
+    }
+  },
+  "dependency_sources": {
+    "energy": {
+      "name": "International Energy Agency (IEA)",
+      "type": "api",
+      "endpoint": "https://www.iea.org/data",
+      "data": ["oil_production", "gas_supply", "electricity", "uranium"],
+      "update_frequency": "monthly",
+      "cost": "free"
+    },
+    "trade": {
+      "name": "UN Comtrade",
+      "type": "api",
+      "endpoint": "https://comtrade.un.org/api",
+      "data": ["bilateral_trade", "trade_flows", "export_import"],
+      "update_frequency": "monthly",
+      "cost": "free",
+      "api_key": "optional"
+    },
+    "resources": {
+      "name": "USGS Mineral Commodity Summaries",
+      "type": "api",
+      "endpoint": "https://www.usgs.gov/centers/nmic",
+      "data": ["rare_earths", "lithium", "cobalt", "critical_minerals"],
+      "update_frequency": "annual",
+      "cost": "free"
+    },
+    "technology": {
+      "name": "World Bank Technology",
+      "type": "api",
+      "endpoint": "https://api.worldbank.org/v2",
+      "data": ["semiconductor_production", "tech_imports", "high_tech_exports"],
+      "update_frequency": "annual",
+      "cost": "free"
+    }
+  },
+  "risk_sources": {
+    "conflict_history": {
+      "name": "Uppsala Conflict Data Program (UCDP)",
+      "type": "api",
+      "endpoint": "http://www.ucdp.uu.se/api",
+      "data": ["conflicts", "battle_deaths", "fatalities", "territorial_disputes"],
+      "update_frequency": "annual",
+      "cost": "free"
+    },
+    "governance": {
+      "name": "V-Dem (Varieties of Democracy)",
+      "type": "api",
+      "endpoint": "https://www.v-dem.net/api",
+      "data": ["democracy_index", "governance_quality", "institutional_strength"],
+      "update_frequency": "annual",
+      "cost": "free"
+    },
+    "fragility": {
+      "name": "Fragile States Index (FFP)",
+      "type": "api",
+      "endpoint": "https://fragilestatesindex.org/api",
+      "data": ["state_fragility", "risk_factors", "cohesion_score"],
+      "update_frequency": "annual",
+      "cost": "free"
+    },
+    "early_warnings": {
+      "name": "ICEWS (Integrated Conflict Early Warning System)",
+      "type": "api",
+      "endpoint": "https://dataverse.harvard.edu/api/datasets",
+      "data": ["political_events", "conflict_indicators", "forecast"],
+      "update_frequency": "daily",
+      "cost": "free"
+    }
+  },
+  "realtime_sources": {
+    "news_events": {
+      "name": "LiveNewsMap",
+      "type": "web_scraper",
+      "url": "https://livenewsmap.com",
+      "data": ["news_headlines", "event_locations", "timestamps", "sources"],
+      "update_frequency": "real-time",
+      "cost": "free",
+      "scraper_module": "livenewsmap_scraper.py",
+      "cache_ttl_seconds": 300,
+      "respectful_delay_seconds": 2.0,
+      "supports": ["regional_filtering", "source_aggregation", "location_mapping"]
+    },
+    "military_incidents": {
+      "name": "WarStrikes",
+      "type": "web_scraper",
+      "url": "https://warstrikes.com",
+      "data": ["military_strikes", "incident_types", "coordinates", "severity"],
+      "update_frequency": "real-time",
+      "cost": "free",
+      "scraper_module": "warstrikes_scraper.py",
+      "cache_ttl_seconds": 300,
+      "respectful_delay_seconds": 2.0,
+      "supports": ["severity_assessment", "coordinate_extraction", "incident_grouping", "regional_filtering"]
+    }
+  },
+  "supplementary_sources": {
+    "market_data": {
+      "name": "Frankfurter",
+      "type": "api",
+      "endpoint": "https://api.frankfurter.app",
+      "data": ["currency_exchange", "forex_rates"],
+      "update_frequency": "daily",
+      "cost": "free"
+    },
+    "acled_conflicts": {
+      "name": "ACLED",
+      "type": "api",
+      "endpoint": "https://api.acleddata.com/nlp",
+      "data": ["conflict_events", "fatalities", "locations"],
+      "update_frequency": "daily",
+      "cost": "free",
+      "requires_api_key": true,
+      "register_at": "https://acleddata.com/register"
+    },
+    "reliefweb": {
+      "name": "ReliefWeb",
+      "type": "api",
+      "endpoint": "https://reliefweb.int/api",
+      "data": ["humanitarian_crises", "disasters", "emergency_data"],
+      "update_frequency": "daily",
+      "cost": "free",
+      "requires_appname": true,
+      "register_at": "https://apidoc.reliefweb.int/parameters#appname"
+    }
+  },
+  "analysis_configuration": {
+    "power_index_weights": {
+      "military": 0.40,
+      "economic": 0.35,
+      "diplomatic": 0.25
+    },
+    "vulnerability_factors": {
+      "energy_dependency": 0.30,
+      "food_dependency": 0.15,
+      "technology_dependency": 0.25,
+      "resource_dependency": 0.30
+    },
+    "conflict_risk_indicators": {
+      "historical_frequency": 0.20,
+      "economic_inequality": 0.20,
+      "resource_competition": 0.15,
+      "governance_failure": 0.20,
+      "alliances": 0.15,
+      "demographic_stress": 0.10
+    },
+    "real_time_incident_severity": {
+      "critical": "nuclear, wmd, mass_casualty, capital_attack",
+      "high": "major_offensive, government_target, infrastructure",
+      "medium": "military_strike, bombing, drone_attack",
+      "low": "minor_incident, surveillance, patrol"
+    }
+  },
+  "data_update_schedule": {
+    "real_time": {
+      "sources": ["LiveNewsMap", "WarStrikes"],
+      "frequency": "continuous",
+      "cache_ttl": "5 minutes"
+    },
+    "daily": {
+      "sources": ["ACLED", "ReliefWeb", "Frankfurter", "ICEWS"],
+      "frequency": "24 hours"
+    },
+    "monthly": {
+      "sources": ["IEA", "UN Comtrade", "Outlook"],
+      "frequency": "30 days"
+    },
+    "annual": {
+      "sources": ["SIPRI", "World Bank", "USGS", "UCDP", "V-Dem", "FFP"],
+      "frequency": "365 days"
+    }
+  },
+  "quality_assurance": {
+    "verify_sources": true,
+    "cross_reference": true,
+    "confidence_threshold": 0.75,
+    "error_handling": "graceful_degradation",
+    "cache_strategy": "intelligent_ttl"
+  },
+  "privacy_and_compliance": {
+    "respect_robots_txt": true,
+    "user_agent": "GeopoliticalAnalystSkill/2.0 (+http://github.com/nimaansari)",
+    "request_delay": "2-5 seconds between scrapes",
+    "data_retention": "30 days for caches",
+    "gdpr_compliant": true,
+    "attribution": "All sources cited in output"
+  }
+}
